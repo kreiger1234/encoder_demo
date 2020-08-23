@@ -239,7 +239,7 @@ public class MainActivity extends AppCompatActivity {
             return 1;
         }
         Log.d("Videolength",totalseconds + " " + mediaInfo.getDuration());
-        if(totalseconds*1000 > mediaInfo.getDuration()){
+        /*if(totalseconds*1000 > mediaInfo.getDuration()){
             MainActivity.this.runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
@@ -247,11 +247,11 @@ public class MainActivity extends AppCompatActivity {
                 }
             });
             return 1;
-        }
+        }*/
 
         partsCount =  (int)Math.ceil((double)totalseconds / 30d);
 
-        String staticParameters = "-i "+ getApplicationContext().getCacheDir().getPath() + "/" + cacheOGFile.getName() + " -c:v libx264 -crf 19 -pix_fmt yuv420p -filter:v scale=700:-1 -c:a libmp3lame -b:a 128k -maxrate 2.4M -bufsize 3M ";
+        String staticParameters = "-i "+ "\"" +getApplicationContext().getCacheDir().getPath() + "/" + cacheOGFile.getName() + "\"" + " -c:v libx264 -crf 19 -pix_fmt yuv420p -filter:v scale=700:-1 -c:a libmp3lame -b:a 128k -maxrate 2.4M -bufsize 3M ";
         //String staticParameters = "-i "+ getApplicationContext().getCacheDir().getPath() + "/" + cacheOGFile.getName() + " -c:v libx264 -pix_fmt yuv420p -filter:v scale=700:-1 -b 1800k -minrate 1800k -maxrate 2300k -c:a libmp3lame -b:a 128k -bufsize 3M ";
         int startSeconds = startStamps[0] * 3600  + startStamps[1] * 60 + startStamps[2];
         int endSeconds = endStamps[0] * 3600 + endStamps[1] * 60 + endStamps[2];
@@ -289,7 +289,7 @@ public class MainActivity extends AppCompatActivity {
                 t = endSeconds - ss;
             }
             currentPartNumber = i;
-            int resultCode = FFmpeg.execute( "-ss " + ss  + " " + staticParameters + " -t " + t + " " + getApplicationContext().getCacheDir().getPath() + "/" + opFileName + i + "part.mp4");
+            int resultCode = FFmpeg.execute( "-ss " + ss  + " " + staticParameters + " -t " + t + " \"" + getApplicationContext().getCacheDir().getPath() + "/" + opFileName + i + "part.mp4\"");
             Log.d("ffmpeg_execution",staticParameters + opFileName + i + "part.mp4");
             Log.d("ffmpeg_execution","Result code = "+ resultCode + " part = "+i );
         }
