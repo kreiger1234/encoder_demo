@@ -200,6 +200,10 @@ public class MainActivity extends AppCompatActivity {
         }).start();
     }
 
+    public void startEncode(View view){
+        permission_ok(filepath);
+    }
+
     private void setCopyingDialog(){
         builder = new AlertDialog.Builder(this);
         builder.setTitle("Wait..");
