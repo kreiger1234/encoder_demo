@@ -11,6 +11,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.UriPermission;
+import android.media.MediaMetadata;
+import android.media.MediaMetadataRetriever;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -20,6 +22,7 @@ import android.view.View;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.VideoView;
 
 import com.arthenica.mobileffmpeg.Config;
 import com.arthenica.mobileffmpeg.FFmpeg;
@@ -34,6 +37,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.annotation.Inherited;
+import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.Callable;
 
@@ -65,6 +69,8 @@ public class MainActivity extends AppCompatActivity {
     EditText endTime;
     int partsCount;
     int currentPartNumber = 0;
+    Uri filepath = null;
+    CustomVideoView videoView;
 
     private int UPDATE_PROGRESS=1;
     int t=0; // the value for parameter -t in ffmpeg
@@ -95,6 +101,7 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         };
+        videoView = (CustomVideoView) findViewById(R.id.videoView);
 
     }
     @Override
@@ -110,7 +117,8 @@ public class MainActivity extends AppCompatActivity {
                 {
                     Log.d("SAF",data.getData().toString());
                     Log.d("Stored_permissions",""+getContentResolver().getPersistedUriPermissions().size());
-                    permission_ok(data.getData());
+                    filepath = data.getData();
+                    //permission_ok(data.getData());
                 }
                 break;
             case 2:
@@ -127,6 +135,69 @@ public class MainActivity extends AppCompatActivity {
                     copyToDirectory(data.getData());
                 }
         }
+    }
+
+    public void previewVideo(View view){
+        String[] startSplitString= startTime.getText().toString().split(":");
+        String[] endSplitString= endTime.getText().toString().split(":");
+        int[] startStamps = new int[3];
+        int[] endStamps = new int[3];
+
+        if( startSplitString.length != 3 || endSplitString.length != 3 ) {
+            MainActivity.this.runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    Toast.makeText(MainActivity.this, "Timestamp format incorrect", Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
+
+        for(int i = 0 ; i < startSplitString.length ; i++)
+        {
+            startStamps[i] = Integer.parseInt(startSplitString[i]);
+            endStamps[i] = Integer.parseInt((endSplitString[i]));
+        }
+
+        int startSeconds = startStamps[0] * 3600  + startStamps[1] * 60 + startStamps[2];
+        int endSeconds = endStamps[0] * 3600 + endStamps[1] * 60 + endStamps[2];
+        if(startSeconds >= endSeconds){
+            Toast.makeText(this.getApplicationContext(), "Error, SS = " + startSeconds + " end = " + endSeconds,Toast.LENGTH_SHORT).show();
+            return;
+        }
+        videoView.setVideoURI(filepath); //Maybe df is not required, will check once all this works.
+        //videoView.requestFocus(); // Remove if necessary after it all works
+        MediaMetadataRetriever videoMetadata = new MediaMetadataRetriever();
+        videoMetadata.setDataSource(this.getApplicationContext(), filepath);
+        String height = videoMetadata.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT);
+        String width = videoMetadata.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH);
+        videoView.setVideoDimensions(width,height);
+        Log.d("VideoView", "Metadata h:w = " + height + " " + width);
+        videoView.seekTo( startSeconds * 1000 ); //Uses milliseconds
+        //videoView.onMeasure(videoView.getMeasuredWidth(), videoView.getMeasuredHeight());
+        videoView.start();
+        new Thread(() ->{
+            try {
+                Thread.sleep(200);
+            }
+            catch(InterruptedException ie){
+                ie.printStackTrace();
+            }
+            if( ! videoView.isPlaying() ){
+                Toast.makeText(this.getApplicationContext(), "Retry preview, playing was not captured",Toast.LENGTH_SHORT).show();
+            }
+            while(videoView.isPlaying()){
+                try {
+                    Thread.sleep(200);
+                }
+                catch(InterruptedException ie){
+                    ie.printStackTrace();
+                }
+                Log.d("VideoView", "Current position = " + videoView.getCurrentPosition() + " division = " + ( videoView.getCurrentPosition() / 1000 ) );
+                if( ( videoView.getCurrentPosition() ) > (endSeconds * 1000) ){
+                    videoView.pause();
+                }
+            }
+        }).start();
     }
 
     private void setCopyingDialog(){
@@ -301,7 +372,11 @@ public class MainActivity extends AppCompatActivity {
     }
 
     protected void permission_ok(Uri path) {
-
+        if(filepath == null){
+            Toast.makeText(this.getApplicationContext(), " You did not select a file", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        path = filepath;
         final DocumentFile df = DocumentFile.fromSingleUri(this,path);//DocumentFile.fromTreeUri(this, path).findFile("op.mp4");
         final File cacheOGFile = new File(getApplicationContext().getCacheDir().getPath() + "/" + df.getName());
         Log.d("File"," Selected File Name = " + cacheOGFile.getName());
